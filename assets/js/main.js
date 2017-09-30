@@ -1,112 +1,161 @@
 /*
-	Read Only by HTML5 UP
+	Overflow by HTML5 UP
 	html5up.net | @ajlkn
 	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
 */
 
 (function($) {
 
+	var settings = {
+
+		// Full screen header?
+			fullScreenHeader: true,
+
+		// Parallax background effect?
+			parallax: true,
+
+		// Parallax factor (lower = more intense, higher = less intense).
+			parallaxFactor: 10
+
+	};
+
 	skel.breakpoints({
-		xlarge: '(max-width: 1680px)',
-		large: '(max-width: 1280px)',
-		medium: '(max-width: 1024px)',
-		small: '(max-width: 736px)',
-		xsmall: '(max-width: 480px)'
+		wide: '(max-width: 1680px)',
+		normal: '(max-width: 1080px)',
+		narrow: '(max-width: 840px)',
+		mobile: '(max-width: 736px)'
 	});
 
 	$(function() {
 
-		var $body = $('body'),
-			$header = $('#header'),
-			$nav = $('#nav'), $nav_a = $nav.find('a'),
-			$wrapper = $('#wrapper');
+		var	$window = $(window),
+			$body = $('body');
+
+		if (skel.vars.mobile) {
+
+			settings.parallax = false;
+			$body.addClass('is-scroll');
+
+		}
+
+		// Disable animations/transitions until the page has loaded.
+			$body.addClass('is-loading');
+
+			$window.on('load', function() {
+				$body.removeClass('is-loading');
+			});
+
+		// CSS polyfills (IE<9).
+			if (skel.vars.IEVersion < 9)
+				$(':last-child').addClass('last-child');
 
 		// Fix: Placeholder polyfill.
 			$('form').placeholder();
 
-		// Prioritize "important" elements on medium.
-			skel.on('+medium -medium', function() {
+		// Prioritize "important" elements on mobile.
+			skel.on('+mobile -mobile', function() {
 				$.prioritize(
-					'.important\\28 medium\\29',
-					skel.breakpoint('medium').active
+					'.important\\28 mobile\\29',
+					skel.breakpoint('mobile').active
 				);
 			});
 
-		// Header.
-			var ids = [];
+		// Scrolly links.
+			$('.scrolly-middle').scrolly({
+				speed: 1000,
+				anchor: 'middle'
+			});
 
-			// Set up nav items.
-				$nav_a
-					.scrolly({ offset: 44 })
-					.on('click', function(event) {
+			$('.scrolly').scrolly({
+				speed: 1000,
+				offset: function() { return (skel.breakpoint('mobile').active ? 70 : 190); }
+			});
 
-						var $this = $(this),
-							href = $this.attr('href');
+		// Full screen header.
+			if (settings.fullScreenHeader) {
 
-						// Not an internal link? Bail.
-							if (href.charAt(0) != '#')
-								return;
+				var $header = $('#header');
 
-						// Prevent default behavior.
-							event.preventDefault();
+				if ($header.length > 0) {
 
-						// Remove active class from all links and mark them as locked (so scrollzer leaves them alone).
-							$nav_a
-								.removeClass('active')
-								.addClass('scrollzer-locked');
+					var $header_header = $header.find('header');
 
-						// Set active class on this link.
-							$this.addClass('active');
+					$window
+						.on('resize.overflow_fsh', function() {
+
+							if (skel.breakpoint('mobile').active)
+								$header.css('padding', '');
+							else {
+
+								var p = Math.max(192, ($window.height() - $header_header.outerHeight()) / 2);
+								$header.css('padding', p + 'px 0 ' + p + 'px 0');
+
+							}
+
+						})
+						.trigger('resize.overflow_fsh');
+
+					$window.load(function() {
+						$window.trigger('resize.overflow_fsh');
+					});
+
+				}
+
+			}
+
+		// Parallax background.
+
+			// Disable parallax on IE (smooth scrolling is jerky), and on mobile platforms (= better performance).
+				if (skel.vars.browser == 'ie'
+				||	skel.vars.mobile)
+					settings.parallax = false;
+
+			if (settings.parallax) {
+
+				var $dummy = $(), $bg;
+
+				$window
+					.on('scroll.overflow_parallax', function() {
+
+						// Adjust background position.
+							$bg.css('background-position', 'center ' + (-1 * (parseInt($window.scrollTop()) / settings.parallaxFactor)) + 'px');
 
 					})
-					.each(function() {
+					.on('resize.overflow_parallax', function() {
 
-						var $this = $(this),
-							href = $this.attr('href'),
-							id;
+						// If we're in a situation where we need to temporarily disable parallax, do so.
+							if (!skel.breakpoint('wide').active
+							||	skel.breakpoint('narrow').active) {
 
-						// Not an internal link? Bail.
-							if (href.charAt(0) != '#')
-								return;
+								$body.css('background-position', '');
+								$bg = $dummy;
 
-						// Add to scrollzer ID list.
-							id = href.substring(1);
-							$this.attr('id', id + '-link');
-							ids.push(id);
+							}
 
-					});
+						// Otherwise, continue as normal.
+							else
+								$bg = $body;
 
-			// Initialize scrollzer.
-				$.scrollzer(ids, { pad: 300, lastHack: true });
+						// Trigger scroll handler.
+							$window.triggerHandler('scroll.overflow_parallax');
 
-		// Off-Canvas Navigation.
+					})
+					.trigger('resize.overflow_parallax');
 
-			// Title Bar.
-				$(
-					'<div id="titleBar">' +
-						'<a href="#header" class="toggle"></a>' +
-						'<span class="title">' + $('#logo').html() + '</span>' +
-					'</div>'
-				)
-					.appendTo($body);
+			}
 
-			// Header.
-				$('#header')
-					.panel({
-						delay: 500,
-						hideOnClick: true,
-						hideOnSwipe: true,
-						resetScroll: true,
-						resetForms: true,
-						side: 'right',
-						target: $body,
-						visibleClass: 'header-visible'
-					});
-
-			// Fix: Remove navPanel transitions on WP<10 (poor/buggy performance).
-				if (skel.vars.os == 'wp' && skel.vars.osVersion < 10)
-					$('#titleBar, #header, #wrapper')
-						.css('transition', 'none');
+		// Poptrox.
+			$('.gallery').poptrox({
+				useBodyOverflow: false,
+				usePopupEasyClose: false,
+				overlayColor: '#0a1919',
+				overlayOpacity: (skel.vars.IEVersion < 9 ? 0 : 0.75),
+				usePopupDefaultStyling: false,
+				usePopupCaption: true,
+				popupLoaderText: '',
+				windowMargin: 10,
+				usePopupNav: true
+			});
 
 	});
 
